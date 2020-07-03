@@ -1,0 +1,592 @@
+---
+title: "MSc_CW2_13175438_S_Khan"
+author: "Sameer Khan"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    df_print: paged
+---
+
+```{r setup, include=F}
+library(knitr)
+library(readr)
+library(tree)
+library(dplyr)
+library(e1071)
+library(randomForest)
+library(ISLR)
+library(ROCR)
+```
+
+# 1. Bayesian Networks and Naïve Bayes Classifiers
+**(a) Given a training dataset including 30 instances and a Bayesian network indicating the relationships
+between 3 features (i.e. Income, Student and Credit Rate), and the class attribute (i.e. Buy Computer),
+please create the conditional probability tables by hand.**
+
+
+```{r, include=F}
+Yes = 0.47
+No = 0.53
+
+CPT_Buy <- data.frame(Yes, No)
+```
+
+```{r}
+kable(CPT_Buy, caption="Conditional Probability Table: Buy Computer")
+```
+
+
+```{r, include=F}
+Buy_Computer = c('Yes', 'No')
+High_Income = c(0.36, 0.44)
+Low_Income = c(0.64, 0.56)
+CPT_Income <- data.frame(Buy_Computer, High_Income, Low_Income)
+```
+
+```{r}
+kable(CPT_Income, caption="Conditional Probability Table: Income")
+```
+
+
+```{r, include=F}
+Buy_Computer = c('Yes', 'No')
+Student_True = c(0.50, 0.69)
+Student_False = c(0.50, 0.31)
+CPT_Student <- data.frame(Buy_Computer, Student_True, Student_False)
+```
+
+```{r}
+kable(CPT_Student, caption="Conditional Probability Table: Student")
+```
+
+
+```{r, include=F}
+Buy_Computer = c(rep('Yes',4), rep('No',4))
+Income = c('High', 'High', 'Low', 'Low', 'High', 'High', 'Low', 'Low')
+Student = c('True', 'False','True', 'False','True', 'False','True', 'False')
+Rating_Excellent = c(0.5, 0.67, 0.4, 0.67, 0.5, 0.67, 0.29, 0.5)
+Rating_Fair = c(0.5, 0.33, 0.6, 0.33, 0.5, 0.33, 0.71, 0.5)
+CPT_Rating <- data.frame(Buy_Computer, Income, Student, Rating_Excellent, Rating_Fair)
+```
+
+```{r}
+kable(CPT_Rating, caption="Conditional Probability Table: Credit Rating")
+```
+
+**(b) Make predictions for 2 testing instances by using the Bayesian network classifier.**
+
+_**>> Instance 31 <<**_
+
+$P(BuyComputer=Yes \mid Income=Low, Student=False, Rating=Excellent)$
+
+Proportional To: P(BuyComputer=Yes, Income=Low, Student=False, Rating=Excellent)
+
+= P(Rating=Excellent | Income=Low, Student=False, BuyComputer=Yes)
+x P(Student=False | BuyComputer=Yes)
+x P(Income=Low | BuyComputer=Yes)
+x P(BuyComputer=Yes)
+
+= 0.67 x 0.5 x 0.64 x 0.47 = **0.10**
+
+
+$P(BuyComputer=No \mid Income=Low, Student=False, Rating=Excellent)$
+
+Proportional To: P(BuyComputer=No, Income=Low, Student=False, Rating=Excellent)
+
+= P(Rating=Excellent | Income=Low, Student=False, BuyComputer=No)
+x P(Student=False | BuyComputer=No)
+x P(Income=Low | BuyComputer=No)
+x P(BuyComputer=No)
+
+= 0.5 x 0.31 x 0.56 x 0.53 = **0.05**
+
+---> _Prediction for class attribute of instance 31: **BUY COMPUTER (YES)**_
+
+
+_**>> Instance 32 <<**_
+
+$P(BuyComputer=Yes \mid Income=High, Student=False, Rating=Fair)$
+
+Proportional To: P(BuyComputer=Yes, Income=High, Student=False, Rating=Fair)
+
+= P(Rating=Fair | Income=High, Student=False, BuyComputer=Yes)
+x P(Student=False | BuyComputer=Yes)
+x P(Income=High | BuyComputer=Yes)
+x P(BuyComputer=Yes)
+
+= 0.33 x 0.5 x 0.36 x 0.47 = **0.03**
+
+
+$P(BuyComputer=No \mid Income=High, Student=False, Rating=Fair)$
+
+Proportional To: P(BuyComputer=No, Income=High, Student=False, Rating=Fair)
+
+= P(Rating=Fair | Income=High, Student=False, BuyComputer=No)
+x P(Student=False | BuyComputer=No)
+x P(Income=High | BuyComputer=No)
+x P(BuyComputer=No)
+
+= 0.33 x 0.31 x 0.44 x 0.53 = **0.02**
+
+--->  _Prediction for class attribute of instance 32: **BUY COMPUTER (YES)**_
+
+
+
+**(c) Based on the conditional independence assumption between features, please create the conditional probability tables by hand.**
+
+```{r, include=F}
+Yes = 0.47
+No = 0.53
+
+CPT_Buy <- data.frame(Yes, No)
+```
+
+```{r}
+kable(CPT_Buy, caption="Conditional Probability Table (Independence Assumption): Buy Computer")
+```
+
+
+```{r, include=F}
+Buy_Computer = c('Yes', 'No')
+High_Income = c(0.36, 0.44)
+Low_Income = c(0.64, 0.56)
+CPT_Income <- data.frame(Buy_Computer, High_Income, Low_Income)
+```
+
+```{r}
+kable(CPT_Income, caption="Conditional Probability Table (Independence Assumption): Income")
+```
+
+
+```{r, include=F}
+Buy_Computer = c('Yes', 'No')
+Student_True = c(0.50, 0.69)
+Student_False = c(0.50, 0.31)
+CPT_Student <- data.frame(Buy_Computer, Student_True, Student_False)
+```
+
+```{r}
+kable(CPT_Student, caption="Conditional Probability Table (Independence Assumption): Student")
+```
+
+
+```{r, include=F}
+Buy_Computer = c('Yes', 'No')
+Rating_Excellent_Ind = c(0.50, 0.44)
+Rating_Fair_Ind = c(0.50, 0.56)
+CPT_Rating_Ind <- data.frame(Buy_Computer, Rating_Excellent_Ind, Rating_Fair_Ind)
+```
+
+```{r}
+kable(CPT_Rating_Ind, caption="Conditional Probability Table (Independence Assumption): Credit Rating")
+```
+
+
+**(d) Make predictions for 2 testing instances by using the naïve Bayes classifier.**
+
+_**>> Instance 31 <<**_
+
+$P(BuyComputer=Yes \mid Income=Low, Student=False, Rating=Excellent)$
+
+Proportional To: P(BuyComputer=Yes, Income=Low, Student=False, Rating=Excellent)
+
+= P(Rating=Excellent | BuyComputer=Yes)
+x P(Student=False | BuyComputer=Yes)
+x P(Income=Low | BuyComputer=Yes)
+x P(BuyComputer=Yes)
+
+= 0.5 x 0.5 x 0.64 x 0.47 = **0.08**
+
+
+$P(BuyComputer=No \mid Income=Low, Student=False, Rating=Excellent)$
+
+Proportional To: P(BuyComputer=No, Income=Low, Student=False, Rating=Excellent)
+
+= P(Rating=Excellent | BuyComputer=No)
+x P(Student=False | BuyComputer=No)
+x P(Income=Low | BuyComputer=No)
+x P(BuyComputer=No)
+
+= 0.44 x 0.31 x 0.56 x 0.53 = **0.04**
+
+---> _Prediction for class attribute of instance 31: **BUY COMPUTER (YES)**_
+
+
+_**>> Instance 32 <<**_
+
+$P(BuyComputer=Yes \mid Income=High, Student=False, Rating=Fair)$
+
+Proportional To: P(BuyComputer=Yes, Income=High, Student=False, Rating=Fair)
+
+= P(Rating=Fair | BuyComputer=Yes)
+x P(Student=False | BuyComputer=Yes)
+x P(Income=High | BuyComputer=Yes)
+x P(BuyComputer=Yes)
+
+= 0.5 x 0.5 x 0.36 x 0.47 = **0.042**
+
+
+$P(BuyComputer=No \mid Income=High, Student=False, Rating=Fair)$
+
+Proportional To: P(BuyComputer=No, Income=High, Student=False, Rating=Fair)
+
+= P(Rating=Fair | BuyComputer=No)
+x P(Student=False | BuyComputer=No)
+x P(Income=High | BuyComputer=No)
+x P(BuyComputer=No)
+
+= 0.56 x 0.31 x 0.44 x 0.53 = **0.041**
+
+---> _Prediction for class attribute of instance 31: **BUY COMPUTER (YES)**_
+
+--------------------------------------------------------------------------------------------------
+
+# 2. Decision Trees and Random Forests
+To predict room occupancy using the decision tree classification algorithm.
+
+**(a) Load the room occupancy data and train a decision tree classifier. Evaluate the predictive performance by reporting the accuracy obtained on the testing datasset.**
+
+
+```{r include=TRUE}
+room.trainingset <- read.csv('RoomOccupancy_Training.txt')
+room.testingset <- read.csv('RoomOccupancy_Testing.txt')
+
+tree.room.train <- tree(Occupancy ~ ., data=room.trainingset)
+summary(tree.room.train)
+
+tree.room.pred <- predict(tree.room.train, newdata=room.testingset, type='class')
+error <- mean(tree.room.pred != room.testingset$Occupancy)
+accuracy <- mean(tree.room.pred == room.testingset$Occupancy)
+table(tree.room.pred, room.testingset$Occupancy)
+```
+
+The Decision Tree classifier had an accuracy of `r round(accuracy*100,1)`%.
+
+
+
+**(b) Output and analyse the tree learned by the decision tree algorithm, i.e. plot the tree structure and make a discussion about it.**
+
+```{r}
+plot(tree.room.train)
+text(tree.room.train, pretty=0)
+```
+
+It is clear that light is the most important factor in determining occupancy, when considering a level below or above 162.875 lux. This makes intuitive sense, since overall visibility in a room will drive whether or not people may want to enter! Then, given a minimum lighting level, the next decision appears to be one based on room temperature, with a split at 22.2 degrees celcius. Anything above this, and further factors come into play, such as CO2 levels and humidity.  
+
+
+**(c) Train a random forests classifier, and evaluate the predictive performance by reporting the accuracy obtained on the testing dataset.**
+
+```{r}
+table(is.na(room.trainingset))  # Ensure no N/A values in data
+```
+
+```{r}
+set.seed(10)
+bag.room <- randomForest(Occupancy ~ ., data=room.trainingset, importance=T)
+print(bag.room)
+```
+
+```{r}
+bag.room.pred <- predict(bag.room, newdata=room.testingset, type='class')
+bag_error <- mean(bag.room.pred != room.testingset$Occupancy)
+bag_accuracy <- mean(bag.room.pred == room.testingset$Occupancy)
+table(bag.room.pred, room.testingset$Occupancy)
+```
+
+
+The Random Forest classifier had an accuracy of `r round(accuracy*100,1)`%.
+
+
+**(d) Output and analyse the feature importance obtained by the random forests classifier.**
+
+```{r}
+importance(bag.room)
+varImpPlot(bag.room)
+barplot(sort(importance(bag.room)[,1], decreasing = TRUE), xlab = "Relative Importance", horiz = TRUE, col = 'red', las = 1)
+```
+
+
+
+Above plots display relative feature importance in ranked order, whereby Light levels are by far the most important.
+Co2 and Temperature are the next two variables with the largest mean decrease in Gini index.
+
+
+
+--------------------------------------------------------------------------------------------------
+
+# 3. SVM
+To predict the wine quality using the support vector machine classification algorithm.
+
+**(a) Download the wine quality data and use the training dataset to conduct the grid-search to find the optimal hyperparameters of svm by using the linear kernal.**
+
+```{r}
+wine.training <- read.csv('WineQuality_training.txt')
+wine.testing <- read.csv('WineQuality_testing.txt')
+head(wine.training)
+str(wine.training)
+```
+
+```{r}
+set.seed(1)
+tune.out <- tune(svm, quality ~ ., data=wine.training, kernel='linear',
+                 ranges=list(cost=c(0.01, 0.1, 1, 5, 10),
+                             gamma=c(0.01, 0.03, 0.1, 0.5, 1)))
+plot(tune.out)
+summary(tune.out)
+```
+
+
+The best performance was 0.238, using the following optimal parameters:
+Cost = 1 
+Gamma = 0.01
+
+
+
+**(b) Train a svm classifier by using the linear kernal and the corresponding optimal hyperparameters, then make predictions on the testing dataset, report the predictive performance.**
+
+```{r}
+svmfit.train.C1G001 <- svm(quality ~ ., data=wine.training, kernel='linear', cost=1, gamma=0.01, scale=T)
+summary(svmfit.train.C1G001)
+```
+
+```{r}
+svm.pred.c1g001 <- predict(svmfit.train.C1G001, newdata=wine.testing)
+error <- mean(wine.testing$quality != svm.pred.c1g001)
+table(wine.testing$quality, svm.pred.c1g001)
+```
+
+The classifer had an error rate of `r round(error*100)`%.
+
+
+
+**(c) Conduct the grid-search to find the optimal hyperparameters of svm by using the RBF kernal.**
+
+```{r}
+set.seed(1)
+tune.out.rbf <- tune(svm, quality ~ ., data=wine.training, kernel='radial',
+                     ranges=list(cost=c(0.01, 0.1, 1, 5, 10),
+                                 gamma=c(0.01, 0.03, 0.1, 0.5, 1)))
+plot(tune.out.rbf)
+summary(tune.out.rbf)
+```
+
+
+The best performance was 0.1563, using the following optimal parameters:
+Cost = 5 
+Gamma = 1
+
+
+
+
+**(d) Train a svm classifier by using the RBF kernal and the corresponding optimal hyperparameters, then make predictions on the testing dataset, report the predictive performance.**
+
+```{r}
+svmfit.radial.c5g1 <- svm(quality ~ ., data=wine.training, kernel='radial', cost=5, gamma=1, scale=T)
+summary(svmfit.radial.c5g1)
+```
+
+```{r}
+svm.pred.rad.c5g1 <- predict(svmfit.radial.c5g1, newdata=wine.testing)
+error.radial <- mean(wine.testing$quality != svm.pred.rad.c5g1)
+table(wine.testing$quality, svm.pred.rad.c5g1)
+```
+
+The classifier using a radial kernel had an error rate of `r round(error.radial*100)`%.
+
+
+**(e) Conduct the ROC curve analysis to compare the predictive performance of svm classifiers trained by using the linear and RBF kernels respectively.**
+
+```{r}
+# Compute performance using Linear kernel
+fitted.linear <- attributes(predict(svmfit.train.C1G001, newdata=wine.testing, decision.values = TRUE))$decision.values
+pred.linear.svm <- prediction(fitted.linear, wine.testing$quality)
+auroc.linear.svm <- performance(pred.linear.svm, measure="auc")
+auroc.linear <- auroc.linear.svm@y.values[[1]]
+pr.linear.svm <- performance(pred.linear.svm, measure='tpr', x.measure='fpr')
+
+# Computer performance using Radial kernel
+fitted.radial <- attributes(predict(svmfit.radial.c5g1, newdata=wine.testing, decision.values = TRUE))$decision.values
+pred.radial.svm <- prediction(fitted.radial, wine.testing$quality)
+auroc.radial.svm <- performance(pred.radial.svm, measure="auc")
+auroc.radial <- auroc.radial.svm@y.values[[1]]
+pr.radial.svm <- performance(pred.radial.svm, measure='tpr', x.measure='fpr')
+
+# Draw Plots and Legend
+plot(pr.linear.svm, col='red', lwd=2, xlab='False Positive Rate', ylab='True Positive Rate', main='ROC Analysis of SVM Classifiers')
+plot(pr.radial.svm, add=T, col='blue', lwd=2)
+
+legend(title='Area under ROC', 'bottomright', 
+       c(text=sprintf('Linear Kernel: %s', round(auroc.linear, digits=2)),
+         text=sprintf('Radial Kernel: %s', round(auroc.radial, digits=2))),
+       lty=1, col=c('red','blue'), bg='grey')
+
+```
+
+
+Using the Area under ROC as a measure, the SVM trained with a linear kernel performs better than with a radial kerner.
+
+
+--------------------------------------------------------------------------------------------------
+
+# 4. Hierarchical Clustering
+Consider the USArrests data. We will now perform hierarchical clustering on the states.
+
+**(a) Using hierarchical clustering with complete linkage and Euclidean distance, cluster the states.**
+
+```{r}
+data <- USArrests
+data <- na.omit(data)
+
+dis.mtrx <- dist(data, method='euclidean')
+hc.comp <- hclust(dis.mtrx, method='complete')
+plot(hc.comp, xlab='US States', ylab='Height', main='Complete Linkage')
+```
+
+
+**(b) Cut the dendrogram at a height that results in three distinct clusters. Which states belong to which clusters?**
+
+```{r}
+hc.comp.cut3 <- cutree(hc.comp, k=3)
+plot(hc.comp, xlab='US States', ylab='Height', main='Complete Linkage')
+rect.hclust(hc.comp, k=3, border=c(2,3,4))
+table(hc.comp.cut3)
+```
+
+```{r}
+for(k in c(1:3)){
+  print(k)
+  print(rownames(data)[hc.comp.cut3==k])
+}
+```
+
+
+**(c) Hierarchically cluster the states using complete linkage and Euclidean distance, after scaling the variables to have standard deviation one.**
+
+```{r}
+data.scaled <- scale(data, scale=T)
+
+dis.mtrx.scaled <- dist(data.scaled, method='euclidean')
+hc.comp.scaled <- hclust(dis.mtrx.scaled, method='complete')
+plot(hc.comp.scaled, xlab='US States', ylab='Height', main='Complete Linkage (scaled data)')
+```
+
+
+**(d) What effect does scaling the variables have on the hierarchical clustering obtained? In your opinion, should the variables be scaled before the inter-observation dissimilarities are computed? Provide a justification for your answer.**
+
+```{r}
+hc.comp.cut3.scaled <- cutree(hc.comp.scaled, k=3)
+table(hc.comp.cut3.scaled)
+```
+
+```{r}
+plot(hc.comp.scaled, xlab='US States', ylab='Height', main='Complete Linkage (scaled data)')
+rect.hclust(hc.comp.scaled, k=3, border=c(2,3,4))
+```
+
+```{r}
+summary(data)
+sapply(data, range)
+```
+
+We observe a change in clustering using scaled and non-scaled data, as can be observed by both tables and respective plots.
+Referencing the help documentation of the USArrests dataset, we see that UrbanPop is a percentage, while the other variables are numbers per 100,000. 
+Scaling is a sensible option in this instance.
+
+
+--------------------------------------------------------------------------------------------------
+
+# 5. PCA and K-Means Clustering
+**(a) Generate a simulated data set with 20 observations in each of three classes (i.e. 60 observations total),and 50 variables.**
+
+```{r}
+set.seed(10)
+x1 <- matrix(runif(1000,-1,1), nrow=20, ncol=50)
+for(row in 1:20){
+  x1[row,] <- x1[row,] + c(runif(50,0,1))
+}
+
+x2 <- matrix(runif(1000,-1,1), nrow=20, ncol=50)
+for(row in 1:20){
+  x2[row,] <- x2[row,] + c(runif(50,-1,0))
+}
+
+x3 <- matrix(runif(1000,-1,1), nrow=20, ncol=50)
+for(row in 1:20){
+  x3[row,] <- x3[row,] + c(runif(25,-1,-0.5), runif(25,0.5,1))
+}
+
+x <- rbind(x1, x2, x3)
+x.class <- c(rep(1,20), rep(2,20), rep(3,20))
+```
+
+**(b) Perform PCA on the 60 observations and plot the first two principal components’ eigenvector. Use a different color to indicate the observations in each of the three classes.**
+
+```{r}
+pca.out <- prcomp(x, scale=F)
+plot(pca.out$x[,1], pca.out$x[,2], xlab='PC1', ylab='PC2', col=x.class, pch=16)
+```
+
+
+**(c) Perform K-means clustering of the observations with K = 3. How well do the clusters that you obtained in K-means clustering compare to the true class labels?**
+
+```{r}
+km.out.3 <- kmeans(x, 3, nstart=100)
+km.out.3$tot.withinss
+table(clustmodel=km.out.3$cluster, original=x.class)
+```
+
+The model perfectly clusters 20 observations in each of the 3 clusters.
+NB: the model assigns a different clustering label to the original data, but this is not significant on this dataset. The choice of labeling has no material impact to the result. What matters here is that each cluster has 20 observations.
+
+
+
+**(d) Perform K-means clustering with K = 2. Describe your results.**
+
+```{r}
+km.out.2 <- kmeans(x, 2, nstart=100)
+km.out.2$tot.withinss
+table(clustmodel=km.out.2$cluster, original=x.class)
+```
+
+The model has now combined 2 of the original clusters, leaving a third of the observations in the remaining cluster. Total WithinSS has increased somewhat, given the requirement to reduce the number of clusters, likely because cluster 1 now includes 40 observations that were originally far apart.
+
+
+**(e) Now perform K-means clustering with K = 4, and describe your results.**
+
+```{r}
+km.out.4 <- kmeans(x, 4, nstart=100)
+km.out.4$tot.withinss
+table(clustmodel=km.out.4$cluster, original=x.class)
+```
+
+Now with 4 clusters, the model is able to better categorise one of the clusters, while leaving the two as they were originally. Total WithinSS has fallen back to roughly where it was with the 3 cluster model, and indeed slightly lower still because of the ability to further segregate one of the clusters.
+
+
+**(f) Now perform K-means clustering with K = 3 on the first two principal components, rather than on the raw data. That is, perform K-means clustering on the 60 × 2 matrix of which the first column is the first principal component’s corresponding eigenvector, and the second column is the second principal component’s corresponding eigenvector. Comment on the results.**
+
+```{r}
+new_data <- pca.out$x[,1:2]
+
+km.out.pca.3 <- kmeans(new_data, 3, nstart=100)
+km.out.pca.3$tot.withinss
+table(clustmodel=km.out.pca.3$cluster, original=x.class)
+```
+
+This model also perfectly clusters the observations into 3 classes. Again, the cluster labels are not important. Having stripped the data down into its first two principal components, total withinSS has dramatically reduced.
+
+
+
+**(g) Using the scale() function, perform K-means clustering with K = 3 on the data after scaling each variable to have standard deviation one. How do these results compare to the true class labels? Will the scaling affect the clustering?**
+
+```{r}
+scaled.x <- scale(x)
+
+km.out.scaled.3 <- kmeans(scaled.x, 3, nstart=100)
+km.out.scaled.3$tot.withinss
+table(clustmodel=km.out.scaled.3$cluster, original=x.class)
+```
+
+Having scaled the data, the model has correctly clustered the observations. However, this is no different to the unscaled data, so the scaling did not affect the clustering. Perhaps worth noting though that the total within-cluster sum of squares was materially higher on the scaled data. We aim to minimise this value when performing such clustering methods.
+
